@@ -40,18 +40,22 @@ int main(int argc, char **argv) {
         switch (option_index) {
           case 0:
             seed = atoi(optarg);
-            // your code here
-            // error handling
+            if (seed <= 0) {
+              printf("Seed must be a positive number\n");
+              return 1;
+            }
             break;
           case 1:
             array_size = atoi(optarg);
-            // your code here
-            // error handling
+            if (array_size <= 0) {
+              printf("Array must be a positive number\n");
+            }
             break;
           case 2:
             pnum = atoi(optarg);
-            // your code here
-            // error handling
+            if (pnum <= 0) {
+              printf("Proccess must be a positive number\n");
+            }
             break;
           case 3:
             with_files = true;
@@ -87,24 +91,53 @@ int main(int argc, char **argv) {
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
+  int (*pipes)[2];
+  FILE **files;
+
+  if (with_files) {
+      files = calloc((size_t) pnum, sizeof(*files));
+      if (files == NULL) {
+          fprintf(stderr, "Error of tmp files!\n");
+          return 1;
+      }
+  } else {
+      pipes = malloc((size_t) pnum * sizeof(*pipes));
+      if (pipes == NULL) {
+          fprintf(stderr, "Error of pipes!\n");
+      }
+  }
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
   for (int i = 0; i < pnum; i++) {
+    if (with_files) {
+      files[i] = tmpfile();
+    } else {
+      pipe(pipes[i]);
+    }
+
     pid_t child_pid = fork();
+
     if (child_pid >= 0) {
       // successful fork
+      if (child_pid != 0 && !with_files) {
+          close(pipes[i][1]);
+      }
       active_child_processes += 1;
       if (child_pid == 0) {
+        if (!with_files)
+            close(pipes[i][0]);
         // child process
-
+        unsigned int begin = (unsigned int) i * array_size / pnum;
+        unsigned int end = (unsigned int) (i + 1) * array_size / pnum;
         // parallel somehow
+        struct MinMax part = GetMinMax(array, begin, end);
 
         if (with_files) {
-          // use files here
+          fwrite(&part, sizeof(struct MinMax), 1, files[i]);
         } else {
-          // use pipe here
+          write(pipes[i][1], &part, sizeof(struct MinMax));
         }
         return 0;
       }
@@ -116,8 +149,13 @@ int main(int argc, char **argv) {
   }
 
   while (active_child_processes > 0) {
-    // your code here
-
+    int status;
+    pid_t pid;
+    pid = wait(&status);
+    if (pid == -1) {
+      printf("Error of child process!");
+    }
+    printf("Proccess %ld returned code %d\n", (long) pid, status);
     active_child_processes -= 1;
   }
 
@@ -128,12 +166,30 @@ int main(int argc, char **argv) {
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
+    struct MinMax part;
 
     if (with_files) {
-      // read from files
+      rewind(files[i]);
+      if (fread(&part, sizeof(part), 1, files[i]) != 1) {
+        fprintf(stderr, "Cannot read result from temporary file %d\n", i);
+        return 1;
+      }
+      fclose(files[i]);
     } else {
-      // read from pipes
+      size_t received = 0;
+      while (received < sizeof(part)) {
+        ssize_t count = read(pipes[i][0], (char *)&part + received,
+                             sizeof(part) - received);
+        if (count <= 0) {
+          fprintf(stderr, "Cannot read result from pipe %d\n", i);
+          return 1;
+        }
+        received += (size_t)count;
+      }
+      close(pipes[i][0]);
     }
+    min = part.min;
+    max = part.max;
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
@@ -146,6 +202,12 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
+  
+  if (with_files) {
+      free(files);
+  } else {
+      free(pipes);
+  }
 
   printf("Min: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
