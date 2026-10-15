@@ -110,7 +110,8 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
-  for (int i = 0; i < pnum; i++) {
+  for (int i = 0; i < pnum; i++) 
+  {
     if (with_files) {
       files[i] = tmpfile();
     } else {
@@ -120,7 +121,7 @@ int main(int argc, char **argv) {
     pid_t child_pid = fork();
 
     if (child_pid >= 0) {
-      // successful fork
+   
       if (child_pid != 0 && !with_files) {
           close(pipes[i][1]);
       }
@@ -128,10 +129,10 @@ int main(int argc, char **argv) {
       if (child_pid == 0) {
         if (!with_files)
             close(pipes[i][0]);
-        // child process
+    
         unsigned int begin = (unsigned int) i * array_size / pnum;
         unsigned int end = (unsigned int) (i + 1) * array_size / pnum;
-        // parallel somehow
+  
         struct MinMax part = GetMinMax(array, begin, end);
 
         if (with_files) {
