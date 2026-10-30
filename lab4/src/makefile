@@ -1,17 +1,9 @@
 CC=gcc
 CFLAGS=-I.
 
-.PHONY: all clean
-
-ifeq ($(shell uname -s),Darwin)
-SUM_LIB=libsum.dylib
-SUM_FLAGS=-dynamiclib -fPIC
-SUM_RPATH=-Wl,-rpath,@executable_path
-else
 SUM_LIB=libsum.so
 SUM_FLAGS=-fPIC -shared
 SUM_RPATH=-Wl,-rpath,'$$ORIGIN'
-endif
 
 all: parallel_min_max process_memory parallel_sum
 
@@ -19,7 +11,7 @@ $(SUM_LIB): sum.c sum.h
 	$(CC) $(CFLAGS) $(SUM_FLAGS) sum.c -o $(SUM_LIB)
 
 parallel_sum: parallel_sum.c sum.h utils.o utils.h $(SUM_LIB)
-	$(CC) $(CFLAGS) -pthread parallel_sum.c utils.o -L. -lsum $(SUM_RPATH) -o $@
+	$(CC) $(CFLAGS) -pthread parallel_sum.c utils.o -L. -lsum $(SUM_RPATH) -o parallel_sum
 
 process_memory: process_memory.c
 	$(CC) -o process_memory process_memory.c
