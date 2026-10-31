@@ -31,7 +31,6 @@ int main(void) {
         printf("Child exit code: %d\n", WEXITSTATUS(status));
     }
 
-    puts("Zombie removed. Check ps again, then press Enter.");
     getchar();
 
     return 0;

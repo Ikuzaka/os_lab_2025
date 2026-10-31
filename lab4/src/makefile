@@ -22,7 +22,7 @@ parallel_min_max : utils.o find_min_max.o utils.h find_min_max.h parallel_min_ma
 utils.o : utils.c utils.h
 	$(CC) -o utils.o -c utils.c $(CFLAGS)
 
-find_min_max.o : utils.h find_min_max.h
+find_min_max.o : utils.h find_min_max.h find_min_max.c
 	$(CC) -o find_min_max.o -c find_min_max.c $(CFLAGS)
 
 

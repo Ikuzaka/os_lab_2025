@@ -11,7 +11,6 @@ void *worker(void *arg) {
   int id = *(int *)arg;
   long long partial = 1;
 
-  /* поток id перемножает числа id+1, id+1+pnum, id+1+2*pnum, */
   for (long long i = id + 1; i <= k; i += pnum)
     partial = partial * i % mod;
 
