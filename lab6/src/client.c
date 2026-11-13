@@ -11,24 +11,12 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include "net.h"
 
 struct Server {
   char ip[255];
   int port;
 };
-
-uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
-
-  return result % mod;
-}
 
 bool ConvertStringToUI64(const char *str, uint64_t *val) {
   char *end = NULL;
@@ -48,7 +36,7 @@ bool ConvertStringToUI64(const char *str, uint64_t *val) {
 int main(int argc, char **argv) {
   uint64_t k = -1;
   uint64_t mod = -1;
-  char servers[255] = {'\0'}; // TODO: explain why 255
+  char servers[255] = {'\0'};
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -69,14 +57,11 @@ int main(int argc, char **argv) {
       switch (option_index) {
       case 0:
         ConvertStringToUI64(optarg, &k);
-        // TODO: your code here
         break;
       case 1:
         ConvertStringToUI64(optarg, &mod);
-        // TODO: your code here
         break;
       case 2:
-        // TODO: your code here
         memcpy(servers, optarg, strlen(optarg));
         break;
       default:
@@ -98,14 +83,25 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // TODO: for one server here, rewrite with servers from file
-  unsigned int servers_num = 1;
-  struct Server *to = malloc(sizeof(struct Server) * servers_num);
-  // TODO: delete this and parallel work between servers
-  to[0].port = 20001;
-  memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
+  FILE *f = fopen(servers, "r");
+  if (f == NULL) {
+    fprintf(stderr, "Can't open %s\n", servers);
+    return 1;
+  }
+  unsigned int servers_num = 0;
+  struct Server *to = NULL;
+  struct Server s;
+  while (fscanf(f, " %254[^:]:%d", s.ip, &s.port) == 2) {
+    to = realloc(to, sizeof(struct Server) * (servers_num + 1));
+    to[servers_num++] = s;
+  }
+  fclose(f);
+  if (servers_num == 0) {
+    fprintf(stderr, "No servers in %s\n", servers);
+    return 1;
+  }
+  int sockets[servers_num];
 
-  // TODO: work continiously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
     struct hostent *hostname = gethostbyname(to[i].ip);
     if (hostname == NULL) {
@@ -129,10 +125,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    // TODO: for one server
-    // parallel between servers
-    uint64_t begin = 1;
-    uint64_t end = k;
+    uint64_t begin = i * k / servers_num + 1;
+    uint64_t end = (i + 1) * k / servers_num;
 
     char task[sizeof(uint64_t) * 3];
     memcpy(task, &begin, sizeof(uint64_t));
@@ -143,6 +137,12 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Send failed\n");
       exit(1);
     }
+    sockets[i] = sck;
+  }
+
+  uint64_t total = 1;
+  for (int i = 0; i < servers_num; i++) {
+    int sck = sockets[i];
 
     char response[sizeof(uint64_t)];
     if (recv(sck, response, sizeof(response), 0) < 0) {
@@ -150,14 +150,13 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    // TODO: from one server
-    // unite results
     uint64_t answer = 0;
     memcpy(&answer, response, sizeof(uint64_t));
-    printf("answer: %llu\n", answer);
+    total = MultModulo(total, answer, mod);
 
     close(sck);
   }
+  printf("answer: %llu\n", total);
   free(to);
 
   return 0;
