@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
   struct sockaddr_in server;
+  //слушаем все локальные адреса ip4
   server.sin_family = AF_INET;
   server.sin_port = htons((uint16_t)port);
   server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -94,7 +95,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Can not bind to socket!");
     return 1;
   }
-
+ //делает сервер ожидающим
   err = listen(server_fd, 128);
   if (err < 0) {
     fprintf(stderr, "Could not listen on socket\n");
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
   while (true) {
     struct sockaddr_in client;
     socklen_t client_len = sizeof(client);
+    //ждем подключения клиента
     int client_fd = accept(server_fd, (struct sockaddr *)&client, &client_len);
 
     if (client_fd < 0) {
@@ -116,6 +118,7 @@ int main(int argc, char **argv) {
     while (true) {
       unsigned int buffer_size = sizeof(uint64_t) * 3;
       char from_client[buffer_size];
+      //ожидаем данные от клиента
       int read = recv(client_fd, from_client, buffer_size, 0);
 
       if (!read)
@@ -146,7 +149,7 @@ int main(int argc, char **argv) {
         args[i].begin = begin + i * len / tnum;
         args[i].end = begin + (i + 1) * len / tnum - 1;
         args[i].mod = mod;
-
+        //вычисляем факториал на потоках на каждом сервере
         if (pthread_create(&threads[i], NULL, ThreadFactorial,
                            (void *)&args[i])) {
           printf("Error: pthread_create failed!\n");
@@ -157,12 +160,13 @@ int main(int argc, char **argv) {
       uint64_t total = 1;
       for (uint32_t i = 0; i < tnum; i++) {
         uint64_t result = 0;
+        //собираем результаты от каждого потока внутри сервера и обьединяем
         pthread_join(threads[i], (void **)&result);
         total = MultModulo(total, result, mod);
       }
 
       printf("Total: %llu\n", total);
-
+      //копируем результат в буфер и отправляем клиенту
       char buffer[sizeof(total)];
       memcpy(buffer, &total, sizeof(total));
       err = send(client_fd, buffer, sizeof(total), 0);
@@ -171,7 +175,7 @@ int main(int argc, char **argv) {
         break;
       }
     }
-
+    //отклюяаем отправку данных из сокета и освобождаем дескриптор
     shutdown(client_fd, SHUT_RDWR);
     close(client_fd);
   }
