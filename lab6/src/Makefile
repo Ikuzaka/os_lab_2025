@@ -1,21 +1,17 @@
 CC = gcc
-CPPFLAGS ?=
-CFLAGS ?= -O2 -Wall -Wextra
-LDFLAGS ?=
-LDLIBS ?=
 
 .PHONY: all clean
 
 all: client server
 
 libnet.so: net.c net.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -shared $(LDFLAGS) -o $@ net.c
+	$(CC) -fPIC -shared -o libnet.so net.c
 
 client: client.c net.h libnet.so
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ client.c -L. -Wl,-rpath,'$$ORIGIN' -lnet $(LDLIBS)
+	$(CC) -o client client.c -L. -Wl,-rpath,'$$ORIGIN' -lnet
 
 server: server.c net.h libnet.so
-	$(CC) $(CPPFLAGS) $(CFLAGS) -pthread $(LDFLAGS) -o $@ server.c -L. -Wl,-rpath,'$$ORIGIN' -lnet $(LDLIBS)
+	$(CC) -pthread -o server server.c -L. -Wl,-rpath,'$$ORIGIN' -lnet
 
 clean:
 	rm -f client server libnet.so
