@@ -7,16 +7,29 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define SERV_PORT 10050
-#define BUFSIZE 100
-#define SADDR struct sockaddr
+int main(int argc, char *argv[]) {
+  if (argc != 3) {
+    fprintf(stderr, "Usage: %s <port> <buffer_size>\n", argv[0]);
+    return 1;
+  }
 
-int main() {
+  char *end;
+  long port = strtol(argv[1], &end, 10);
+  if (*end || port < 1 || port > 65535) {
+    fprintf(stderr, "Port must be between 1 and 65535\n");
+    return 1;
+  }
+  long bufsize = strtol(argv[2], &end, 10);
+  if (*end || bufsize < 1 || bufsize > 65536) {
+    fprintf(stderr, "Buffer size must be between 1 and 65536 bytes\n");
+    return 1;
+  }
+
   const size_t kSize = sizeof(struct sockaddr_in);
 
   int lfd, cfd;
   int nread;
-  char buf[BUFSIZE];
+  char buf[bufsize];
   struct sockaddr_in servaddr;
   struct sockaddr_in cliaddr;
 
@@ -28,9 +41,9 @@ int main() {
   memset(&servaddr, 0, kSize);
   servaddr.sin_family = AF_INET;
   servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  servaddr.sin_port = htons(SERV_PORT);
+  servaddr.sin_port = htons(port);
 
-  if (bind(lfd, (SADDR *)&servaddr, kSize) < 0) {
+  if (bind(lfd, (struct sockaddr *)&servaddr, kSize) < 0) {
     perror("bind");
     exit(1);
   }
@@ -41,15 +54,15 @@ int main() {
   }
 
   while (1) {
-    unsigned int clilen = kSize;
+    socklen_t clilen = kSize;
 
-    if ((cfd = accept(lfd, (SADDR *)&cliaddr, &clilen)) < 0) {
+    if ((cfd = accept(lfd, (struct sockaddr *)&cliaddr, &clilen)) < 0) {
       perror("accept");
       exit(1);
     }
     printf("connection established\n");
 
-    while ((nread = read(cfd, buf, BUFSIZE)) > 0) {
+    while ((nread = read(cfd, buf, bufsize)) > 0) {
       write(1, &buf, nread);
     }
 
