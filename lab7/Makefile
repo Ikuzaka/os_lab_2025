@@ -1,14 +1,16 @@
-CC ?= cc
-CFLAGS ?= -O2 -Wall -Wextra
+all: tcpserver tcpclient udpserver udpclient
 
-PROGRAMS = tcpserver tcpclient udpserver udpclient
+tcpserver: src/tcpserver.c
+	gcc -o tcpserver src/tcpserver.c
 
-.PHONY: all clean
+tcpclient: src/tcpclient.c
+	gcc -o tcpclient src/tcpclient.c
 
-all: $(PROGRAMS)
+udpserver: src/udpserver.c
+	gcc -o udpserver src/udpserver.c
 
-$(PROGRAMS): %: src/%.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS)
+udpclient: src/udpclient.c
+	gcc -o udpclient src/udpclient.c
 
 clean:
-	rm -f $(PROGRAMS)
+	rm -f tcpserver tcpclient udpserver udpclient
